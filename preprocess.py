@@ -14,14 +14,14 @@ import python_speech_features as features
 
 ##### 执行文件时目录下要有一个path_toke.txt，里面指定一个路径，其下建立一个train文件夹，放音频和音素文件 #####
 ##### 音频和音素文件同名，音频后缀名.WAV，音素后缀名.PHN，要大写 #####
-##### 目前只处理一个文件 #####
+##### 可以处理多个文件，每个音频输出一个同名.pkl文件供训练时读取 #####
 	
 ##### THRESHOLD PARAMETER FOR VALID PHONEME JUDGEMENT #####
 ##### 为了数据更好，抛弃了太短的音素，下面的参数可以设置音素长度的下限值，单位为帧 #####
-frame_threshold = 5
+frame_threshold = 10
 ##### SCRIPT META VARIABLES #####
 VERBOSE = False
-DEBUG 	= True
+DEBUG 	= False
 debug_size = 1
 	# Convert only a reduced dataset
 visualize = False
@@ -32,21 +32,6 @@ paths 				= path_reader('path_toke.txt')
 train_source_path	= os.path.join(paths[0], 'train')
 test_source_path	= os.path.join(paths[0], 'test')
 target_path			= os.path.join(paths[0], 'std_preprocess_26_ch')
-
-##### SETUP #####
-if VERBOSE:
-	print('VERBOSE mode: \tACTIVE')
-else:
-	print('VERBOSE mode: \tDEACTIVE')
-
-if DEBUG:
-	print('DEBUG mode: \tACTIVE, only a small dataset will be preprocessed')
-	target_path += '_DEBUG'
-else:
-	print('DEBUG mode: \tDEACTIVE')
-
-
-
 
 phonemes = ['sil', 'dh', 'ae', 'r', 'sp', 'w', 'ah', 'z', 't', 'ay', 'm', 'hh', 'eh', 'n', 'l', 'ow', 'uw', 'g', 'd', 'p', 'ey', 's', 'k', 'ao', 'iy', 'f', 'ih', 'v', 'uh', 'er', 'aa', 'y', 'b', 'oy', 'zh', 'ng', 'aw', 'th']
 
@@ -75,7 +60,6 @@ def create_mfcc(method, filename):
 	return out, out.shape[0]
 
 def calc_norm_param(X, VERBOSE=False):
-	"""Assumes X to be a list of arrays (of differing sizes)"""
 	total_len = 0
 	mean_val = np.zeros(X.shape[1])
 	std_val = np.zeros(X.shape[1])
@@ -108,78 +92,53 @@ def set_type(X, type):
 	return X
 
 
-def preprocess_dataset(source_path, VERBOSE=False, visualize=False):
+def preprocess_dataset(phn_fname, wav_fname, VERBOSE=False, visualize=False):
 	"""Preprocess data, ignoring compressed files and files starting with 'SA'"""
 	i = 0
 	X = []
 	Y = []
 	fig = []
 	num_plot = 4
-	print(source_path)
-	for dirName, subdirList, fileList in os.walk(source_path):
-		for fname in fileList:
-			if not fname.endswith('.PHN') or (fname.startswith("SA")): 
-				continue
-			phn_fname = dirName + '/' + fname
-			wav_fname = dirName + '/' + fname[0:-4] + '.WAV'
-			fr = open(phn_fname)
-			X_val, total_frames = create_mfcc('DUMMY', wav_fname)
-			print(X_val.shape)
-			total_frames = int(total_frames)
-			for line in fr:
-				[start_time, end_time, phoneme] = line.rstrip('\n').split()
-				start_frame = int(float(start_time)*100) + 1
-				end_frame = int(float(end_time)*100) - 3
-				if (end_frame - start_frame) >= frame_threshold:
-					phoneme_num = find_phoneme(phoneme)
-					for i in range(start_frame,end_frame):
-						X.append(X_val[i])
-						Y.append(phoneme_num)
-			fr.close()
+	fr = open(phn_fname)
+	X_val, total_frames = create_mfcc('DUMMY', wav_fname)
+	total_frames = int(total_frames)
+	for line in fr:
+		[start_time, end_time, phoneme] = line.rstrip('\n').split()
+		start_frame = int(float(start_time)*100) + 1
+		end_frame = int(float(end_time)*100) - 3
+		if (end_frame - start_frame) >= frame_threshold:
+			phoneme_num = find_phoneme(phoneme)
+			for i in range(start_frame,end_frame):
+				X.append(X_val[i])
+				Y.append(phoneme_num)
+	fr.close()
 	X = np.array(X)
 	Y = np.array(Y)
 	return X, Y, fig
 
-
-
 ##### PREPROCESSING #####
-print()
-
-print('Preprocessing data ...')
-print('  This will take a while')
-X_train, y_train, _ 	= preprocess_dataset(train_source_path, VERBOSE=False, visualize=False)
-										
-# figs = list(map(plt.figure, plt.get_fignums()))
-
-print('  Preprocessing changesomplete')
-
-print(X_train.shape)
-if 0:
-	for i in y_train[0:300]:
-		print(i)
-
-print()
-print('Normalizing data ...')
-print('    Each channel mean=0, sd=1 ...')
-
-mean_val, std_val, _ = calc_norm_param(X_train)
-
-X_train = normalize(X_train, mean_val, std_val)
-
-X_train = set_type(X_train, data_type)
-
-
-print('Saving data ...')
-print('   ', target_path)
-with open(target_path + '.pkl', 'wb') as cPickle_file:
-    cPickle.dump(
-        [X_train, y_train], 
-        cPickle_file, 
-        protocol=cPickle.HIGHEST_PROTOCOL)
-
+for dirName, subdirList, fileList in os.walk(train_source_path):
+	i = 0
+	for fname in fileList:
+		if not fname.endswith('.PHN') or (fname.startswith("SA")): 
+			continue
+		phn_fname = dirName + '/' + fname
+		wav_fname = dirName + '/' + fname[0:-4] + '.WAV'
+		i += 1
+		print('Preprocessing file' + str(i))
+		X, y, _ 	= preprocess_dataset(phn_fname, wav_fname , VERBOSE=False, visualize=False)									
+		print('File ' + str(i) + ' preprocessing complete')
+		print(X.shape)
+		mean_val, std_val, _ = calc_norm_param(X)
+		X = normalize(X, mean_val, std_val)
+		X = set_type(X, data_type)
+		with open(target_path + '/' + fname[0:-4] + '.pkl', 'wb') as cPickle_file:
+		    cPickle.dump(
+			[X, y], 
+			cPickle_file, 
+			protocol=cPickle.HIGHEST_PROTOCOL)
 print('Preprocessing complete!')
 print()
-
 
 
 print('Total time: {:.3f}'.format(timeit.default_timer() - program_start_time))
