@@ -12,6 +12,10 @@ from general_tools import *
 import python_speech_features as features
 	# https://github.com/jameslyons/python_speech_features
 
+##### 执行文件时目录下要有一个path_toke.txt，里面指定一个路径，其下建立一个train文件夹，放音频和音素文件 #####
+##### 音频和音素文件同名，音频后缀名.WAV，音素后缀名.PHN，要大写 #####
+##### 目前只处理一个文件 #####
+	
 ##### THRESHOLD PARAMETER FOR VALID PHONEME JUDGEMENT #####
 ##### 为了数据更好，抛弃了太短的音素，下面的参数可以设置音素长度的下限值，单位为帧 #####
 frame_threshold = 5
