@@ -109,7 +109,7 @@ def preprocess_dataset(phn_fname, wav_fname, VERBOSE=False, visualize=False):
 			[start_time, end_time, phoneme] = line.rstrip('\n').split()
 			start_frame = int(float(start_time)*100) + 1
 			end_frame = int(float(end_time)*100) - 3
-			if (end_frame - start_frame) >= frame_threshold:
+			if (end_frame - start_frame) >= frame_threshold and (end_frame - start_frame) <= 200:
 				phoneme_num = find_phoneme(phoneme)
 				if phoneme_num != -1:			
 					for i in range(start_frame,end_frame):
