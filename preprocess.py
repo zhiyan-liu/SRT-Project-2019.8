@@ -13,9 +13,9 @@ import python_speech_features as features
 	# https://github.com/jameslyons/python_speech_features
 
 ##### 执行文件时目录下要有一个path_toke.txt，里面指定一个路径，其下建立一个train文件夹，放音频和音素文件 #####
-##### 音频和音素文件同名，音频后缀名.WAV，音素后缀名.PHN，要大写 #####
+##### 音频和音素文件用对齐程序输出的复制进来即可，不要改变文件名 #####
 ##### 可以处理多个文件，每个音频输出一个同名.pkl文件供训练时读取 #####
-	
+
 ##### THRESHOLD PARAMETER FOR VALID PHONEME JUDGEMENT #####
 ##### 为了数据更好，抛弃了太短的音素，下面的参数可以设置音素长度的下限值，单位为帧 #####
 frame_threshold = 10
@@ -31,11 +31,12 @@ data_type = 'float32'
 paths 				= path_reader('path_toke.txt')
 train_source_path	= os.path.join(paths[0], 'train')
 test_source_path	= os.path.join(paths[0], 'test')
-target_path			= os.path.join(paths[0], 'std_preprocess_26_ch')
+target_path			= os.path.join(paths[0], 'output')
 
 phonemes = ['sil', 'dh', 'ae', 'r', 'sp', 'w', 'ah', 'z', 't', 'ay', 'm', 'hh', 'eh', 'n', 'l', 'ow', 'uw', 'g', 'd', 'p', 'ey', 's', 'k', 'ao', 'iy', 'f', 'ih', 'v', 'uh', 'er', 'aa', 'y', 'b', 'oy', 'zh', 'ng', 'aw', 'th']
 
 	# With the use of CMU Dictionary there are 38 different phonemes
+
 
 def find_phoneme (phoneme_idx):
 	for i in range(len(phonemes)):
@@ -103,14 +104,17 @@ def preprocess_dataset(phn_fname, wav_fname, VERBOSE=False, visualize=False):
 	X_val, total_frames = create_mfcc('DUMMY', wav_fname)
 	total_frames = int(total_frames)
 	for line in fr:
-		[start_time, end_time, phoneme] = line.rstrip('\n').split()
-		start_frame = int(float(start_time)*100) + 1
-		end_frame = int(float(end_time)*100) - 3
-		if (end_frame - start_frame) >= frame_threshold:
-			phoneme_num = find_phoneme(phoneme)
-			for i in range(start_frame,end_frame):
-				X.append(X_val[i])
-				Y.append(phoneme_num)
+		line_split = line.rstrip('\n').split()
+		if len(line_split) == 3:
+			[start_time, end_time, phoneme] = line.rstrip('\n').split()
+			start_frame = int(float(start_time)*100) + 1
+			end_frame = int(float(end_time)*100) - 3
+			if (end_frame - start_frame) >= frame_threshold:
+				phoneme_num = find_phoneme(phoneme)
+				if phoneme_num != -1:			
+					for i in range(start_frame,end_frame):
+						X.append(X_val[i])
+						Y.append(phoneme_num)
 	fr.close()
 	X = np.array(X)
 	Y = np.array(Y)
@@ -120,10 +124,10 @@ def preprocess_dataset(phn_fname, wav_fname, VERBOSE=False, visualize=False):
 for dirName, subdirList, fileList in os.walk(train_source_path):
 	i = 0
 	for fname in fileList:
-		if not fname.endswith('.PHN') or (fname.startswith("SA")): 
+		if not fname.endswith('.phn') or (fname.startswith("SA")): 
 			continue
 		phn_fname = dirName + '/' + fname
-		wav_fname = dirName + '/' + fname[0:-4] + '.WAV'
+		wav_fname = dirName + '/' + fname[0:-11] + '.wav'
 		i += 1
 		print('Preprocessing file' + str(i))
 		X, y, _ 	= preprocess_dataset(phn_fname, wav_fname , VERBOSE=False, visualize=False)									
@@ -142,7 +146,6 @@ print()
 
 
 print('Total time: {:.3f}'.format(timeit.default_timer() - program_start_time))
-
 
 
 
