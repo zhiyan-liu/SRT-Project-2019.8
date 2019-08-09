@@ -14,7 +14,7 @@ import python_speech_features as features
 
 ##### 执行文件时目录下要有一个path_toke.txt，里面指定一个路径，其下建立一个train文件夹，放音频和音素文件 #####
 ##### 音频和音素文件用对齐程序输出的复制进来即可，不要改变文件名 #####
-##### 可以处理多个文件，每个音频输出一个同名.pkl文件供训练时读取 #####
+##### 可以处理多个文件，最后将所有结果输出到一个output.pkl文件 #####
 
 ##### THRESHOLD PARAMETER FOR VALID PHONEME JUDGEMENT #####
 ##### 为了数据更好，抛弃了太短的音素，下面的参数可以设置音素长度的下限值，单位为帧 #####
@@ -121,6 +121,8 @@ def preprocess_dataset(phn_fname, wav_fname, VERBOSE=False, visualize=False):
 	return X, Y, fig
 
 ##### PREPROCESSING #####
+X_output = np.empty(shape = [0,26])
+y_output = np.empty(shape = [0])
 for dirName, subdirList, fileList in os.walk(train_source_path):
 	i = 0
 	for fname in fileList:
@@ -136,11 +138,18 @@ for dirName, subdirList, fileList in os.walk(train_source_path):
 		mean_val, std_val, _ = calc_norm_param(X)
 		X = normalize(X, mean_val, std_val)
 		X = set_type(X, data_type)
-		with open(target_path + '/' + fname[0:-4] + '.pkl', 'wb') as cPickle_file:
-		    cPickle.dump(
-			[X, y], 
-			cPickle_file, 
-			protocol=cPickle.HIGHEST_PROTOCOL)
+		X_output = np.append(X_output,X,axis=0)
+		y_output = np.append(y_output,y,axis=0)
+
+print(X_output.shape)
+print(y_output.shape)
+
+with open(target_path + '/output.pkl', 'wb') as cPickle_file:
+	cPickle.dump(
+	[X_output, y_output], 
+	cPickle_file, 
+	protocol=cPickle.HIGHEST_PROTOCOL)
+
 print('Preprocessing complete!')
 print()
 
